@@ -1,7 +1,8 @@
-const CACHE_NAME = "kas-mahasiswa-pwa-v1";
+const CACHE_NAME = "my-kas-pwa-v4";
 
 const APP_SHELL = [
   "./",
+  "./index.html",
   "./manifest.json",
   "./icon-192.png",
   "./icon-512.png"
@@ -35,9 +36,7 @@ self.addEventListener("fetch", (event) => {
   const request = event.request;
   const url = new URL(request.url);
 
-  if (request.method !== "GET") {
-    return;
-  }
+  if (request.method !== "GET") return;
 
   if (
     request.url.includes("script.google.com") ||
@@ -48,10 +47,12 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // index.html selalu ambil terbaru dari GitHub dulu
   if (
     url.pathname.endsWith("/") ||
-    url.pathname.endsWith("/index.html")
+    url.pathname.endsWith("/index.html") ||
+    url.pathname.endsWith("/manifest.json") ||
+    url.pathname.endsWith("/icon-192.png") ||
+    url.pathname.endsWith("/icon-512.png")
   ) {
     event.respondWith(
       fetch(request, { cache: "no-store" })
@@ -67,40 +68,23 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // manifest dan icon juga cek server dulu supaya perubahan cepat terbaca
-  if (
-    url.pathname.endsWith("/manifest.json") ||
-    url.pathname.endsWith("/icon-192.png") ||
-    url.pathname.endsWith("/icon-512.png")
-  ) {
-    event.respondWith(
-      fetch(request, { cache: "reload" })
-        .then((response) => {
-          const copy = response.clone();
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(request, copy);
-          });
-          return response;
-        })
-        .catch(() => caches.match(request))
-    );
-    return;
-  }
-
-  // file lain cache-first
   event.respondWith(
     caches.match(request).then((cached) => {
       if (cached) return cached;
 
       return fetch(request).then((response) => {
         const copy = response.clone();
-
         caches.open(CACHE_NAME).then((cache) => {
           cache.put(request, copy);
         });
-
         return response;
       });
     })
   );
+});
+
+self.addEventListener("message", (event) => {
+  if (event.data && event.data.type === "SKIP_WAITING") {
+    self.skipWaiting();
+  }
 });
