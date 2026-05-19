@@ -402,10 +402,47 @@
     });
 
     if ("serviceWorker" in navigator) {
-      window.addEventListener("load", () => {
-        navigator.serviceWorker.register("./sw.js?v=1").catch((error) => {
+      window.addEventListener("load", async () => {
+        try {
+          const registration = await navigator.serviceWorker.register("./sw.js");
+    
+          // Paksa browser mengecek sw.js terbaru setiap aplikasi dibuka
+          await registration.update();
+    
+          // Kalau ada service worker baru yang sedang menunggu, langsung aktifkan
+          if (registration.waiting) {
+            registration.waiting.postMessage({ type: "SKIP_WAITING" });
+          }
+    
+          // Kalau ditemukan update baru
+          registration.addEventListener("updatefound", () => {
+            const newWorker = registration.installing;
+    
+            if (!newWorker) return;
+    
+            newWorker.addEventListener("statechange", () => {
+              if (
+                newWorker.state === "installed" &&
+                navigator.serviceWorker.controller
+              ) {
+                newWorker.postMessage({ type: "SKIP_WAITING" });
+              }
+            });
+          });
+    
+          // Saat service worker baru aktif, reload halaman sekali
+          let refreshing = false;
+    
+          navigator.serviceWorker.addEventListener("controllerchange", () => {
+            if (refreshing) return;
+    
+            refreshing = true;
+            window.location.reload();
+          });
+    
+        } catch (error) {
           console.log("Service Worker gagal:", error);
-        });
+        }
       });
     }
 
