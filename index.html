@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#2563eb" />
+  <meta name="description" content="Kas Mahasiswa Digital - aplikasi pengelolaan kas mahasiswa." />
+
+  <title>Kas Mahasiswa Digital</title>
+
+  <link rel="manifest" href="./manifest.json?v=3" />
+  <link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png?v=3" />
+  <link rel="apple-touch-icon" href="./icon-192.png?v=3" />
+
+  <style>
+    :root {
+      --blue: #2563eb;
+      --pink: #ec4899;
+      --dark: #0f172a;
+      --muted: #64748b;
+      --line: #dbe4f0;
+      --bg: #f6f8fc;
+    }
+
+    * {
+      box-sizing: border-box;
+      font-family: Inter, "Segoe UI", Arial, sans-serif;
+    }
+
+    html,
+    body {
+      height: 100%;
+      margin: 0;
+      background:
+        radial-gradient(circle at top left, rgba(37, 99, 235, .14), transparent 35%),
+        radial-gradient(circle at bottom right, rgba(236, 72, 153, .14), transparent 35%),
+        var(--bg);
+      color: var(--dark);
+      overflow: hidden;
+    }
+
+    .app-shell {
+      height: 100%;
+      display: grid;
+      grid-template-rows: auto 1fr;
+    }
+
+    .topbar {
+      min-height: 72px;
+      padding: 10px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      background: rgba(255, 255, 255, .82);
+      border-bottom: 1px solid rgba(219, 228, 240, .9);
+      backdrop-filter: blur(18px);
+      box-shadow: 0 10px 35px rgba(15, 23, 42, .08);
+      z-index: 10;
+    }
+
+    .brand {
+      min-width: 0;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-logo {
+      width: 46px;
+      height: 46px;
+      display: grid;
+      place-items: center;
+      flex: 0 0 auto;
+      background: transparent;
+      box-shadow: none;
+      border-radius: 0;
+      overflow: visible;
+      padding: 0;
+    }
+
+    .brand-logo img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      display: block;
+      border-radius: 0;
+      background: transparent;
+    }
+
+    .brand-title {
+      margin: 0;
+      font-size: 17px;
+      font-weight: 950;
+      line-height: 1.1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .brand-subtitle {
+      display: block;
+      margin-top: 3px;
+      font-size: 12px;
+      color: var(--muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex: 0 0 auto;
+    }
+
+    .btn {
+      height: 42px;
+      border: none;
+      border-radius: 14px;
+      padding: 0 14px;
+      font-size: 13px;
+      font-weight: 900;
+      cursor: pointer;
+      color: white;
+      background: linear-gradient(135deg, var(--blue), var(--pink));
+      box-shadow: 0 12px 26px rgba(37, 99, 235, .20);
+      transition: .2s;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .btn:hover {
+      transform: translateY(-1px);
+    }
+
+    .btn.secondary {
+      color: var(--dark);
+      background: #fff;
+      border: 1px solid var(--line);
+      box-shadow: none;
+    }
+
+    .frame-wrap {
+      position: relative;
+      min-height: 0;
+      height: 100%;
+    }
+
+    iframe {
+      display: block;
+      width: 100%;
+      height: 100%;
+      border: 0;
+      background: #fff;
+    }
+
+    .loading {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      background:
+        radial-gradient(circle at top left, rgba(37, 99, 235, .10), transparent 35%),
+        radial-gradient(circle at bottom right, rgba(236, 72, 153, .10), transparent 35%),
+        #f8fafc;
+      transition: opacity .25s ease, visibility .25s ease;
+      z-index: 5;
+    }
+
+    .loading.hide {
+      opacity: 0;
+      visibility: hidden;
+    }
+
+    .loader-card {
+      width: min(320px, calc(100% - 32px));
+      padding: 24px;
+      border-radius: 26px;
+      background: rgba(255, 255, 255, .92);
+      border: 1px solid var(--line);
+      box-shadow: 0 24px 70px rgba(15, 23, 42, .15);
+      text-align: center;
+    }
+
+    .spinner {
+      width: 48px;
+      height: 48px;
+      margin: 0 auto 14px;
+      border-radius: 50%;
+      border: 4px solid #dbeafe;
+      border-top-color: var(--pink);
+      animation: spin .8s linear infinite;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    .loader-card strong {
+      display: block;
+      font-size: 16px;
+      margin-bottom: 4px;
+    }
+
+    .loader-card span {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .offline {
+      position: fixed;
+      left: 14px;
+      right: 14px;
+      bottom: 14px;
+      z-index: 20;
+      display: none;
+      padding: 12px 14px;
+      border-radius: 18px;
+      background: #fff;
+      border: 1px solid #fecaca;
+      color: #991b1b;
+      box-shadow: 0 18px 45px rgba(15, 23, 42, .16);
+      font-size: 13px;
+      font-weight: 800;
+      text-align: center;
+    }
+
+    .offline.show {
+      display: block;
+    }
+
+    @media (max-width: 640px) {
+      .topbar {
+        min-height: 60px;
+        padding: 8px 10px;
+      }
+
+      .brand {
+        gap: 9px;
+      }
+
+      .brand-logo {
+        width: 34px;
+        height: 34px;
+      }
+
+      .brand-title {
+        font-size: 14px;
+      }
+
+      .brand-subtitle {
+        font-size: 10px;
+      }
+
+      .btn {
+        height: 38px;
+        padding: 0 10px;
+        font-size: 12px;
+        border-radius: 13px;
+      }
+
+      .btn.secondary {
+        display: none;
+      }
+    }
+
+    @media (max-width: 380px) {
+      .brand-logo {
+        width: 30px;
+        height: 30px;
+      }
+
+      .brand-title {
+        font-size: 13px;
+      }
+
+      .brand-subtitle {
+        display: none;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <main class="app-shell">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-logo">
+          <img src="./icon-192.png?v=3" alt="Logo Kas Mahasiswa" />
+        </div>
+
+        <div>
+          <h1 class="brand-title">Kas Mahasiswa Digital</h1>
+          <span class="brand-subtitle">Aplikasi kas kelas berbasis Apps Script</span>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button class="btn secondary" onclick="openOriginal()">Buka Asli</button>
+        <button class="btn secondary" onclick="reloadApp()">Refresh</button>
+        <button class="btn" id="installBtn" style="display:none;">Install</button>
+      </div>
+    </header>
+
+    <section class="frame-wrap">
+      <iframe
+        id="appFrame"
+        title="Kas Mahasiswa Digital"
+        src="https://script.google.com/macros/s/AKfycbwpXHEvp0q0Pg0anChYV-OOjuHQUR7uov1n9wSbg92ZnfopaJLW59wo0ncdm5qeLpdU/exec"
+        allow="fullscreen"
+      ></iframe>
+
+      <div class="loading" id="loading">
+        <div class="loader-card">
+          <div class="spinner"></div>
+          <strong>Membuka Aplikasi</strong>
+          <span>Jika halaman tidak tampil, klik “Buka Asli” untuk memastikan link Apps Script aktif.</span>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div class="offline" id="offlineBanner">
+    Koneksi internet terputus. Aplikasi kas membutuhkan internet untuk membuka data Spreadsheet.
+  </div>
+
+  <script>
+    const APP_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwpXHEvp0q0Pg0anChYV-OOjuHQUR7uov1n9wSbg92ZnfopaJLW59wo0ncdm5qeLpdU/exec";
+
+    const frame = document.getElementById("appFrame");
+    const loading = document.getElementById("loading");
+    const offlineBanner = document.getElementById("offlineBanner");
+    const installBtn = document.getElementById("installBtn");
+
+    let deferredPrompt = null;
+
+    frame.addEventListener("load", () => {
+      setTimeout(() => {
+        loading.classList.add("hide");
+      }, 700);
+    });
+
+    function reloadApp() {
+      loading.classList.remove("hide");
+      frame.src = APP_SCRIPT_URL + (APP_SCRIPT_URL.includes("?") ? "&" : "?") + "t=" + Date.now();
+    }
+
+    function openOriginal() {
+      window.open(APP_SCRIPT_URL, "_blank");
+    }
+
+    function updateOnlineStatus() {
+      offlineBanner.classList.toggle("show", !navigator.onLine);
+    }
+
+    window.addEventListener("online", updateOnlineStatus);
+    window.addEventListener("offline", updateOnlineStatus);
+    updateOnlineStatus();
+
+    window.addEventListener("beforeinstallprompt", (event) => {
+      event.preventDefault();
+      deferredPrompt = event;
+      installBtn.style.display = "inline-flex";
+    });
+
+    installBtn.addEventListener("click", async () => {
+      if (!deferredPrompt) return;
+
+      deferredPrompt.prompt();
+      await deferredPrompt.userChoice;
+
+      deferredPrompt = null;
+      installBtn.style.display = "none";
+    });
+
+    window.addEventListener("appinstalled", () => {
+      deferredPrompt = null;
+      installBtn.style.display = "none";
+    });
+
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("./sw.js?v=3");
+      });
+    }
+  </script>
+</body>
+</html>
