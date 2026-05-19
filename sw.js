@@ -1,4 +1,4 @@
-const CACHE_NAME = "my-kas-pwa-v4";
+const CACHE_NAME = "my-kas-pwa-v5";
 
 const APP_SHELL = [
   "./",
