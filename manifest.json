@@ -1,11 +1,11 @@
 {
-  "name": "Kas Mahasiswa Digital",
-  "short_name": "Kas Digital",
-  "description": "Aplikasi kas mahasiswa berbasis Google Apps Script.",
+  "name": "My Kas",
+  "short_name": "My Kas",
+  "description": "Aplikasi kas mahasiswa berbasis Digital.",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
-  "orientation": "any",
+  "orientation": "portrait",
   "background_color": "#f6f8fc",
   "theme_color": "#2563eb",
   "icons": [
