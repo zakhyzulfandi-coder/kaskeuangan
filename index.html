@@ -309,6 +309,88 @@
         font-size: 11px;
       }
     }
+
+        .force-update {
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      display: none;
+      place-items: center;
+      padding: 22px;
+      background:
+        radial-gradient(circle at top left, rgba(37, 99, 235, .20), transparent 36%),
+        radial-gradient(circle at bottom right, rgba(236, 72, 153, .20), transparent 36%),
+        rgba(15, 23, 42, .72);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+    }
+    
+    .force-update.show {
+      display: grid;
+    }
+    
+    .force-update-card {
+      width: min(430px, 100%);
+      padding: 28px;
+      border-radius: 30px;
+      background: rgba(255, 255, 255, .96);
+      border: 1px solid rgba(255, 255, 255, .72);
+      box-shadow: 0 30px 90px rgba(15, 23, 42, .34);
+      text-align: center;
+      animation: updateCardIn .35s cubic-bezier(.2, .9, .25, 1.15) both;
+    }
+    
+    .force-update-icon {
+      width: 68px;
+      height: 68px;
+      margin: 0 auto 16px;
+      display: grid;
+      place-items: center;
+      border-radius: 24px;
+      color: white;
+      font-size: 30px;
+      font-weight: 950;
+      background: linear-gradient(135deg, #2563eb, #ec4899);
+      box-shadow: 0 18px 40px rgba(37, 99, 235, .24);
+    }
+    
+    .force-update-card h2 {
+      margin: 0 0 10px;
+      font-size: 24px;
+      color: #0f172a;
+      letter-spacing: -.02em;
+    }
+    
+    .force-update-card p {
+      margin: 0 0 20px;
+      color: #64748b;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+    
+    .force-update-card .btn {
+      width: 100%;
+    }
+    
+    body.update-required {
+      overflow: hidden;
+    }
+    
+    body.update-required iframe {
+      pointer-events: none;
+    }
+    
+    @keyframes updateCardIn {
+      from {
+        opacity: 0;
+        transform: translateY(18px) scale(.96);
+      }
+    
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
   </style>
 </head>
 
@@ -351,166 +433,224 @@
     Koneksi internet terputus. Aplikasi kas membutuhkan internet untuk membuka data Spreadsheet.
   </div>
 
+  <div class="force-update" id="forceUpdateOverlay">
+    <div class="force-update-card">
+      <div class="force-update-icon">⬆</div>
+      <h2>Update Aplikasi Tersedia</h2>
+      <p>
+        Versi terbaru My Kas sudah tersedia. Untuk melanjutkan menggunakan aplikasi,
+        silakan update terlebih dahulu.
+      </p>
+  
+      <button class="btn" id="forceUpdateBtn" type="button">
+        Update Sekarang
+      </button>
+    </div>
+  </div>
+
   <script>
-    const APP_SCRIPT_URL = "https://script.google.com/a/~/macros/s/AKfycbwpXHEvp0q0Pg0anChYV-OOjuHQUR7uov1n9wSbg92ZnfopaJLW59wo0ncdm5qeLpdU/exec";
+  const APP_SCRIPT_URL = "https://script.google.com/a/~/macros/s/AKfycbwpXHEvp0q0Pg0anChYV-OOjuHQUR7uov1n9wSbg92ZnfopaJLW59wo0ncdm5qeLpdU/exec";
 
-    const frame = document.getElementById("appFrame");
-    const loading = document.getElementById("loading");
-    const offlineBanner = document.getElementById("offlineBanner");
-    const installBtn = document.getElementById("installBtn");
-    const updateBtn = document.getElementById("updateBtn");
+  const frame = document.getElementById("appFrame");
+  const loading = document.getElementById("loading");
+  const offlineBanner = document.getElementById("offlineBanner");
+  const installBtn = document.getElementById("installBtn");
+  const updateBtn = document.getElementById("updateBtn");
 
-    let deferredPrompt = null;
-    let newWorkerWaiting = null;
-    let refreshing = false;
+  const forceUpdateOverlay = document.getElementById("forceUpdateOverlay");
+  const forceUpdateBtn = document.getElementById("forceUpdateBtn");
 
-    frame.addEventListener("load", () => {
-      setTimeout(() => {
-        loading.classList.add("hide");
-      }, 700);
-    });
+  let deferredPrompt = null;
+  let newWorkerWaiting = null;
+  let refreshing = false;
+  let updateRequired = false;
 
-    function reloadApp() {
-      loading.classList.remove("hide");
+  frame.addEventListener("load", () => {
+    setTimeout(() => {
+      loading.classList.add("hide");
+    }, 700);
+  });
 
-      frame.src =
-        APP_SCRIPT_URL +
-        (APP_SCRIPT_URL.includes("?") ? "&" : "?") +
-        "t=" +
-        Date.now();
-    }
+  function reloadApp() {
+    if (updateRequired) return;
 
-    function updateOnlineStatus() {
-      offlineBanner.classList.toggle("show", !navigator.onLine);
-    }
+    loading.classList.remove("hide");
 
-    window.addEventListener("online", updateOnlineStatus);
-    window.addEventListener("offline", updateOnlineStatus);
-    updateOnlineStatus();
+    frame.src =
+      APP_SCRIPT_URL +
+      (APP_SCRIPT_URL.includes("?") ? "&" : "?") +
+      "t=" +
+      Date.now();
+  }
 
-    window.addEventListener("beforeinstallprompt", (event) => {
-      event.preventDefault();
-      deferredPrompt = event;
+  function updateOnlineStatus() {
+    offlineBanner.classList.toggle("show", !navigator.onLine);
+  }
+
+  window.addEventListener("online", updateOnlineStatus);
+  window.addEventListener("offline", updateOnlineStatus);
+  updateOnlineStatus();
+
+  window.addEventListener("beforeinstallprompt", (event) => {
+    event.preventDefault();
+    deferredPrompt = event;
+
+    if (!updateRequired) {
       installBtn.style.display = "inline-flex";
-    });
+    }
+  });
 
-    installBtn.addEventListener("click", async () => {
-      if (!deferredPrompt) {
-        alert("Browser belum menyiapkan tombol install. Coba gunakan menu Install di browser.");
-        return;
-      }
+  installBtn.addEventListener("click", async () => {
+    if (updateRequired) return;
 
-      deferredPrompt.prompt();
-      await deferredPrompt.userChoice;
+    if (!deferredPrompt) {
+      alert("Browser belum menyiapkan tombol install. Coba gunakan menu Install di browser.");
+      return;
+    }
 
-      deferredPrompt = null;
+    deferredPrompt.prompt();
+    await deferredPrompt.userChoice;
+
+    deferredPrompt = null;
+    installBtn.style.display = "none";
+  });
+
+  window.addEventListener("appinstalled", () => {
+    deferredPrompt = null;
+    installBtn.style.display = "none";
+  });
+
+  function showForceUpdate() {
+    updateRequired = true;
+
+    document.body.classList.add("update-required");
+
+    if (frame) {
+      frame.style.pointerEvents = "none";
+    }
+
+    if (installBtn) {
       installBtn.style.display = "none";
-    });
-
-    window.addEventListener("appinstalled", () => {
-      deferredPrompt = null;
-      installBtn.style.display = "none";
-    });
-
-    function showUpdateButton() {
-      if (!updateBtn) return;
-      updateBtn.style.display = "inline-flex";
     }
 
     if (updateBtn) {
-      updateBtn.addEventListener("click", () => {
-        if (!newWorkerWaiting) return;
-
-        updateBtn.innerText = "Memperbarui...";
-        updateBtn.disabled = true;
-
-        newWorkerWaiting.postMessage({ type: "SKIP_WAITING" });
-      });
+      updateBtn.style.display = "inline-flex";
+      updateBtn.innerText = "Update Aplikasi";
+      updateBtn.disabled = false;
     }
 
-    if ("serviceWorker" in navigator) {
-      window.addEventListener("load", async () => {
-        try {
-          const registration = await navigator.serviceWorker.register("./sw.js");
+    if (forceUpdateOverlay) {
+      forceUpdateOverlay.classList.add("show");
+    }
+  }
 
-          registration.update();
+  function runAppUpdate() {
+    if (!newWorkerWaiting) return;
 
-          if (registration.waiting) {
-            newWorkerWaiting = registration.waiting;
-            showUpdateButton();
-          }
-
-          registration.addEventListener("updatefound", () => {
-            const newWorker = registration.installing;
-
-            if (!newWorker) return;
-
-            newWorker.addEventListener("statechange", () => {
-              if (
-                newWorker.state === "installed" &&
-                navigator.serviceWorker.controller
-              ) {
-                newWorkerWaiting = newWorker;
-                showUpdateButton();
-              }
-            });
-          });
-
-          navigator.serviceWorker.addEventListener("controllerchange", () => {
-            if (refreshing) return;
-
-            refreshing = true;
-            window.location.reload();
-          });
-
-        } catch (error) {
-          console.log("Service Worker gagal:", error);
-        }
-      });
+    if (updateBtn) {
+      updateBtn.innerText = "Memperbarui...";
+      updateBtn.disabled = true;
     }
 
-    document.addEventListener(
-      "wheel",
-      function (event) {
-        if (event.ctrlKey) {
-          event.preventDefault();
-        }
-      },
-      { passive: false }
-    );
+    if (forceUpdateBtn) {
+      forceUpdateBtn.innerText = "Memperbarui...";
+      forceUpdateBtn.disabled = true;
+    }
 
-    document.addEventListener("keydown", function (event) {
-      if (
-        event.ctrlKey &&
-        (
-          event.key === "+" ||
-          event.key === "-" ||
-          event.key === "=" ||
-          event.key === "0"
-        )
-      ) {
-        event.preventDefault();
+    newWorkerWaiting.postMessage({ type: "SKIP_WAITING" });
+  }
+
+  if (updateBtn) {
+    updateBtn.addEventListener("click", runAppUpdate);
+  }
+
+  if (forceUpdateBtn) {
+    forceUpdateBtn.addEventListener("click", runAppUpdate);
+  }
+
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", async () => {
+      try {
+        const registration = await navigator.serviceWorker.register("./sw.js");
+
+        registration.update();
+
+        if (registration.waiting) {
+          newWorkerWaiting = registration.waiting;
+          showForceUpdate();
+        }
+
+        registration.addEventListener("updatefound", () => {
+          const newWorker = registration.installing;
+
+          if (!newWorker) return;
+
+          newWorker.addEventListener("statechange", () => {
+            if (
+              newWorker.state === "installed" &&
+              navigator.serviceWorker.controller
+            ) {
+              newWorkerWaiting = newWorker;
+              showForceUpdate();
+            }
+          });
+        });
+
+        navigator.serviceWorker.addEventListener("controllerchange", () => {
+          if (refreshing) return;
+
+          refreshing = true;
+          window.location.reload();
+        });
+
+      } catch (error) {
+        console.log("Service Worker gagal:", error);
       }
     });
+  }
 
-    document.addEventListener("gesturestart", function (event) {
+  document.addEventListener(
+    "wheel",
+    function (event) {
+      if (event.ctrlKey) {
+        event.preventDefault();
+      }
+    },
+    { passive: false }
+  );
+
+  document.addEventListener("keydown", function (event) {
+    if (
+      event.ctrlKey &&
+      (
+        event.key === "+" ||
+        event.key === "-" ||
+        event.key === "=" ||
+        event.key === "0"
+      )
+    ) {
       event.preventDefault();
-    });
+    }
+  });
 
-    let lastTouchEnd = 0;
-    document.addEventListener(
-      "touchend",
-      function (event) {
-        const now = new Date().getTime();
+  document.addEventListener("gesturestart", function (event) {
+    event.preventDefault();
+  });
 
-        if (now - lastTouchEnd <= 300) {
-          event.preventDefault();
-        }
+  let lastTouchEnd = 0;
+  document.addEventListener(
+    "touchend",
+    function (event) {
+      const now = new Date().getTime();
 
-        lastTouchEnd = now;
-      },
-      false
-    );
-  </script>
+      if (now - lastTouchEnd <= 300) {
+        event.preventDefault();
+      }
+
+      lastTouchEnd = now;
+    },
+    false
+  );
+</script>
 </body>
 </html>
