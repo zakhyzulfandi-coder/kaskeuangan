@@ -11,7 +11,7 @@
   <meta name="theme-color" content="#2563eb" />
   <meta
     name="description"
-    content="Kas Mahasiswa Digital - aplikasi pengelolaan kas mahasiswa."
+    content="My Kas - aplikasi pengelolaan kas mahasiswa."
   />
 
   <title>My Kas</title>
@@ -140,11 +140,22 @@
       box-shadow: 0 8px 18px rgba(37, 99, 235, .20);
     }
 
+    .btn:disabled {
+      opacity: .75;
+      cursor: not-allowed;
+      transform: none;
+    }
+
     .btn.secondary {
       color: var(--dark);
       background: #fff;
       border: 1px solid var(--line);
       box-shadow: none;
+    }
+
+    #updateBtn {
+      background: linear-gradient(135deg, #16a34a, #22c55e);
+      box-shadow: 0 12px 26px rgba(34, 197, 94, .22);
     }
 
     .frame-wrap {
@@ -306,21 +317,22 @@
     <header class="topbar">
       <div class="brand">
         <div>
-          <h1 class="brand-title">Myy Kass</h1>
-          <span class="brand-subtitle">Aplikasi kas kelas berbasis Digital</span>
+          <h1 class="brand-title">My Kas</h1>
+          <span class="brand-subtitle">Aplikasi kas kelas berbasis digital</span>
         </div>
       </div>
 
       <div class="actions">
         <button class="btn secondary" type="button" onclick="reloadApp()">Refresh</button>
-        <button class="btn" type="button" id="installBtn" style="display:none;">Install</button>
+        <button class="btn" id="updateBtn" type="button" style="display:none;">Update Aplikasi</button>
+        <button class="btn" id="installBtn" type="button" style="display:none;">Install</button>
       </div>
     </header>
 
     <section class="frame-wrap">
       <iframe
         id="appFrame"
-        title="Kas Mahasiswa Digital"
+        title="My Kas"
         src="https://script.google.com/a/~/macros/s/AKfycbwpXHEvp0q0Pg0anChYV-OOjuHQUR7uov1n9wSbg92ZnfopaJLW59wo0ncdm5qeLpdU/exec"
         allow="fullscreen"
       ></iframe>
@@ -329,7 +341,7 @@
         <div class="loader-card">
           <div class="spinner"></div>
           <strong>Membuka Aplikasi</strong>
-          <span>Jika halaman tidak tampil, pastikan koneksi anda terhubung ke server.</span>
+          <span>Jika halaman tidak tampil, pastikan koneksi Anda terhubung ke server.</span>
         </div>
       </div>
     </section>
@@ -346,8 +358,11 @@
     const loading = document.getElementById("loading");
     const offlineBanner = document.getElementById("offlineBanner");
     const installBtn = document.getElementById("installBtn");
+    const updateBtn = document.getElementById("updateBtn");
 
     let deferredPrompt = null;
+    let newWorkerWaiting = null;
+    let refreshing = false;
 
     frame.addEventListener("load", () => {
       setTimeout(() => {
@@ -363,10 +378,6 @@
         (APP_SCRIPT_URL.includes("?") ? "&" : "?") +
         "t=" +
         Date.now();
-    }
-
-    function openOriginal() {
-      window.open(APP_SCRIPT_URL, "_blank");
     }
 
     function updateOnlineStatus() {
@@ -401,45 +412,57 @@
       installBtn.style.display = "none";
     });
 
+    function showUpdateButton() {
+      if (!updateBtn) return;
+      updateBtn.style.display = "inline-flex";
+    }
+
+    if (updateBtn) {
+      updateBtn.addEventListener("click", () => {
+        if (!newWorkerWaiting) return;
+
+        updateBtn.innerText = "Memperbarui...";
+        updateBtn.disabled = true;
+
+        newWorkerWaiting.postMessage({ type: "SKIP_WAITING" });
+      });
+    }
+
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", async () => {
         try {
           const registration = await navigator.serviceWorker.register("./sw.js");
-    
-          // Paksa browser mengecek sw.js terbaru setiap aplikasi dibuka
-          await registration.update();
-    
-          // Kalau ada service worker baru yang sedang menunggu, langsung aktifkan
+
+          registration.update();
+
           if (registration.waiting) {
-            registration.waiting.postMessage({ type: "SKIP_WAITING" });
+            newWorkerWaiting = registration.waiting;
+            showUpdateButton();
           }
-    
-          // Kalau ditemukan update baru
+
           registration.addEventListener("updatefound", () => {
             const newWorker = registration.installing;
-    
+
             if (!newWorker) return;
-    
+
             newWorker.addEventListener("statechange", () => {
               if (
                 newWorker.state === "installed" &&
                 navigator.serviceWorker.controller
               ) {
-                newWorker.postMessage({ type: "SKIP_WAITING" });
+                newWorkerWaiting = newWorker;
+                showUpdateButton();
               }
             });
           });
-    
-          // Saat service worker baru aktif, reload halaman sekali
-          let refreshing = false;
-    
+
           navigator.serviceWorker.addEventListener("controllerchange", () => {
             if (refreshing) return;
-    
+
             refreshing = true;
             window.location.reload();
           });
-    
+
         } catch (error) {
           console.log("Service Worker gagal:", error);
         }
